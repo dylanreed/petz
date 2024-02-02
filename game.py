@@ -10,9 +10,10 @@ SCREEN_WIDTH, SCREEN_HEIGHT = 800, 600
 BACKGROUND_COLOR = (34, 139, 34)  # Forest Green
 MENU_HEIGHT = 50
 FOOD_COLOR = (128, 128, 128)  # Grey
-FOOD_SIZE = 1  # Size of the food pixel
+FOOD_SIZE = 8  # Size of the food pixel
 EXPLOSION_SIZE_THRESHOLD = 60  # Size threshold for explosion
-MAX_PET_SPEED = 1  # Maximum speed of pets
+MAX_PET_SPEED = 2  # Maximum speed of pets
+CONSUME_TIME = 1000  # Time in milliseconds to consume food
 
 def generate_random_color():
     """Generate a random color."""
@@ -51,13 +52,13 @@ class Pet:
 
     def grow_and_maybe_split(self):
         """Grow the pet and possibly split it."""
-        self.size += 1
+        self.size += 4
         self.speed = max(0.5, self.speed * 0.9)  # Decrease speed as size increases
         if self.size % 5 == 0:
             # Create and return a new pet if size is divisible by 5
             new_x = self.x + random.randint(-10, 10)
             new_y = self.y + random.randint(-10, 10)
-            return Pet(new_x, new_y, size=1)
+            return Pet(new_x, new_y, size=self.size/2)
         return None
 
     def bounce_off(self, other_pet):
@@ -72,7 +73,7 @@ class Pet:
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
 pygame.display.set_caption("Virtual Pet Game")
 
-pets = [Pet(random.randint(100, SCREEN_WIDTH - 100), random.randint(100, SCREEN_HEIGHT - 100)) for _ in range(5)]
+pets = [Pet(random.randint(100, SCREEN_WIDTH - 100), random.randint(100, SCREEN_HEIGHT - 100)) for _ in range(25)]
 food_x, food_y = None, None
 eating = False
 last_eat_time = 0  # Track the last time a pet ate
