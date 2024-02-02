@@ -12,8 +12,8 @@ MENU_HEIGHT = 50
 FOOD_COLOR = (128, 128, 128)  # Grey
 FOOD_SIZE = 8  # Size of the food pixel
 EXPLOSION_SIZE_THRESHOLD = 60  # Size threshold for explosion
-MAX_PET_SPEED = 2  # Maximum speed of pets
-CONSUME_TIME = 1000  # Time in milliseconds to consume food
+MAX_PET_SPEED = 5  # Maximum speed of pets
+CONSUME_TIME = 1  # Time in milliseconds to consume food
 
 def generate_random_color():
     """Generate a random color."""
@@ -26,7 +26,7 @@ class Pet:
         self.y = y
         self.size = size
         self.color = generate_random_color()  # Assign a unique random color
-        self.speed = 1  # Initial speed
+        self.speed = 3  # Initial speed
         self.direction = random.choice([(1, 0), (-1, 0), (0, 1), (0, -1)])  # Random initial direction
 
     def update_movement(self, food_x, food_y):
@@ -52,7 +52,7 @@ class Pet:
 
     def grow_and_maybe_split(self):
         """Grow the pet and possibly split it."""
-        self.size += 4
+        self.size += 2
         self.speed = max(0.5, self.speed * 0.9)  # Decrease speed as size increases
         if self.size % 5 == 0:
             # Create and return a new pet if size is divisible by 5
@@ -78,7 +78,7 @@ food_x, food_y = None, None
 eating = False
 last_eat_time = 0  # Track the last time a pet ate
 game_running = True
-inventory_selected = None
+inventory_selected = "food"
 
 while game_running:
     current_time = pygame.time.get_ticks()
