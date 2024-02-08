@@ -5,6 +5,8 @@ import math
 # Initialize Pygame
 pygame.init()
 
+pygame.font.init()  # Initialize font module
+font = pygame.font.SysFont('Arial', 24)  # Choose the Arial font and set size to 24
 # Window setup
 window_width, window_height = 800, 600
 window = pygame.display.set_mode((window_width, window_height))
@@ -108,7 +110,8 @@ def check_cell_collision(cells):
 def main():
     run = True
     cells = [Cell(random.randint(0, window_width), random.randint(0, window_height), 10, random_color()) for _ in range(1)]
-    foods = []
+    foods = [Food() for _ in range(20)]
+    clock = pygame.time.Clock()
 
     while run:
         window.fill((255, 255, 255))
@@ -137,6 +140,12 @@ def main():
 
         for food in foods:
             food.draw(window)
+
+        # Render the total number of cells
+        cell_count_text = font.render(f'Cells: {len(cells)}', True, (0, 0, 0))
+        window.blit(cell_count_text, (10, 10))  # Position the cell count text
+
+
 
         pygame.display.update()
         clock.tick(fps)
