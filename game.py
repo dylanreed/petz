@@ -1,128 +1,147 @@
 import pygame
-import sys
 import random
+import math
 
 # Initialize Pygame
 pygame.init()
 
-# Constants for the game
-SCREEN_WIDTH, SCREEN_HEIGHT = 800, 600
-BACKGROUND_COLOR = (34, 139, 34)  # Forest Green
-MENU_HEIGHT = 50
-FOOD_COLOR = (128, 128, 128)  # Grey
-FOOD_SIZE = 8  # Size of the food pixel
-EXPLOSION_SIZE_THRESHOLD = 60  # Size threshold for explosion
-MAX_PET_SPEED = 5  # Maximum speed of pets
-CONSUME_TIME = 1  # Time in milliseconds to consume food
+# Window setup
+window_width, window_height = 800, 600
+window = pygame.display.set_mode((window_width, window_height))
+pygame.display.set_caption("Cell Game")
 
-def generate_random_color():
-    """Generate a random color."""
-    return random.randint(0, 255), random.randint(0, 255), random.randint(0, 255)
+# Colors
+# Function to generate a truly random color
+def random_color():
+    return (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
 
-class Pet:
-    def __init__(self, x, y, size=4):
-        """Initialize a new pet."""
+clock = pygame.time.Clock()
+fps = 60
+
+def distance(x1, y1, x2, y2):
+    return math.sqrt((x1 - x2) ** 2 + (y1 - y2) ** 2)
+
+class Cell:
+    def __init__(self, x, y, radius, color):
         self.x = x
         self.y = y
-        self.size = size
-        self.color = generate_random_color()  # Assign a unique random color
-        self.speed = 3  # Initial speed
-        self.direction = random.choice([(1, 0), (-1, 0), (0, 1), (0, -1)])  # Random initial direction
+        self.radius = radius
+        self.color = random_color()
+        self.speed = 4
+        self.food_eaten = 0
+        self.dx = random.randint(-1, 1)
+        self.dy = random.randint(-1, 1)
+        if self.dx == 0 and self.dy == 0:  # Prevent cells from being stationary
+            self.dx = 1
 
-    def update_movement(self, food_x, food_y):
-        """Update the pet's movement towards food or randomly."""
-        if food_x is not None and food_y is not None:
-            # Move towards food
-            dx = food_x - self.x
-            dy = food_y - self.y
-            dist = max(abs(dx), abs(dy))
-            if dist > 0:
-                self.x += self.speed * (dx / dist)
-                self.y += self.speed * (dy / dist)
-        else:
-            # Random movement
-            self.x += self.direction[0] * self.speed
-            self.y += self.direction[1] * self.speed
-            # Change direction randomly at times
-            if random.randint(0, 20) == 0:
-                self.direction = random.choice([(1, 0), (-1, 0), (0, 1), (0, -1)])
-            # Keep within screen bounds
-            self.x = max(0, min(SCREEN_WIDTH - self.size, self.x))
-            self.y = max(0, min(SCREEN_HEIGHT - self.size - MENU_HEIGHT, self.y))
+    def draw(self, window):
+        pygame.draw.circle(window, self.color, (self.x, self.y), self.radius)
 
-    def grow_and_maybe_split(self):
-        """Grow the pet and possibly split it."""
-        self.size += 2
-        self.speed = max(0.5, self.speed * 0.9)  # Decrease speed as size increases
-        if self.size % 5 == 0:
-            # Create and return a new pet if size is divisible by 5
-            new_x = self.x + random.randint(-10, 10)
-            new_y = self.y + random.randint(-10, 10)
-            return Pet(new_x, new_y, size=self.size/2)
-        return None
+    def move(self):
+        self.x += self.dx * self.speed
+        self.y += self.dy * self.speed
+        # Prevent cells from moving outside window bounds
+        if self.x - self.radius < 0 or self.x + self.radius > window_width:
+            self.dx *= -1
+        if self.y - self.radius < 0 or self.y + self.radius > window_height:
+            self.dy *= -1
 
-    def bounce_off(self, other_pet):
-        """Bounce off another pet to avoid overlap."""
-        dx = self.x - other_pet.x
-        dy = self.y - other_pet.y
-        if dx > 0: self.x += self.speed
-        else: self.x -= self.speed
-        if dy > 0: self.y += self.speed
-        else: self.y -= self.speed
+    def move_towards_food(self, foods):
+        if foods:
+            nearest_food = min(foods, key=lambda food: distance(self.x, self.y, food.x, food.y))
+            dir_x, dir_y = nearest_food.x - self.x, nearest_food.y - self.y
+            distance_to_food = distance(self.x, self.y, nearest_food.x, nearest_food.y)
 
-screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
-pygame.display.set_caption("Virtual Pet Game")
+            if distance_to_food != 0:
+                dir_x, dir_y = dir_x / distance_to_food, dir_y / distance_to_food
+                self.x += dir_x * self.speed
+                self.y += dir_y * self.speed
 
-pets = [Pet(random.randint(100, SCREEN_WIDTH - 100), random.randint(100, SCREEN_HEIGHT - 100)) for _ in range(25)]
-food_x, food_y = None, None
-eating = False
-last_eat_time = 0  # Track the last time a pet ate
-game_running = True
-inventory_selected = "food"
+    def eat_food(self, foods):
+        action_required = None
+        for food in foods[:]:
+            if distance(self.x, self.y, food.x, food.y) < self.radius:
+                foods.remove(food)
+                self.food_eaten += 1
+                self.radius += .25  # Cell grows in size
+                self.speed *= .99  # Slightly reduce speed
+                self.color = random_color()
+                
+                if self.food_eaten % 5  == 0:  # Spawn a new cell every 2 pieces of food
+                    action_required = 'spawn_new_cell'
+                
+                if self.food_eaten == 100:  # Explode after eating 10 pieces of food
+                    action_required = 'explode'
+                    break
+        return action_required
 
-while game_running:
-    current_time = pygame.time.get_ticks()
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            game_running = False
-        elif event.type == pygame.MOUSEBUTTONDOWN:
-            mouse_x, mouse_y = pygame.mouse.get_pos()
-            if mouse_y > SCREEN_HEIGHT - MENU_HEIGHT:
-                inventory_selected = "food"
-            elif inventory_selected == "food" and not eating and food_x is None and mouse_y < SCREEN_HEIGHT - MENU_HEIGHT:
-                food_x, food_y = mouse_x, mouse_y
-                last_eat_time = current_time  # Reset eating timer
+class Food:
+    def __init__(self, x=None, y=None):
+        self.x = random.randint(0, window_width) if x is None else x
+        self.y = random.randint(0, window_height) if y is None else y
+        self.radius = 2
 
-    for pet in pets[:]:  # Iterate over a copy of the list
-        pet.update_movement(food_x, food_y)
-        if not eating and food_x is not None and abs(pet.x + pet.size // 2 - food_x) <= pet.size and abs(pet.y + pet.size // 2 - food_y) <= pet.size:
-            new_pet = pet.grow_and_maybe_split()
-            if new_pet:
-                pets.append(new_pet)
-            food_x, food_y = None, None
-            eating = True
-            last_eat_time = current_time
+    def draw(self, window):
+        pygame.draw.circle(window, (0, 0, 0), (self.x, self.y), self.radius)
 
-    if eating and current_time - last_eat_time > CONSUME_TIME:
-        eating = False
+def check_cell_collision(cells):
+    for i in range(len(cells)):
+        for j in range(i + 1, len(cells)):
+            cell1 = cells[i]
+            cell2 = cells[j]
+            dist = distance(cell1.x, cell1.y, cell2.x, cell2.y)
+            if dist < cell1.radius + cell2.radius:
+                # Simple bounce effect by swapping directions
+                cell1.dx, cell2.dx = cell2.dx, cell1.dx
+                cell1.dy, cell2.dy = cell2.dy, cell1.dy
 
-    # Collision detection and response
-    for i, pet1 in enumerate(pets):
-        for pet2 in pets[i+1:]:
-            if abs(pet1.x - pet2.x) < max(pet1.size, pet2.size) and abs(pet1.y - pet2.y) < max(pet1.size, pet2.size):
-                pet1.bounce_off(pet2)
-                pet2.bounce_off(pet1)
+                # Adjust positions to prevent overlapping
+                overlap = cell1.radius + cell2.radius - dist
+                if dist > 0:  # Prevent division by zero
+                    dx = (cell1.x - cell2.x) / dist
+                    dy = (cell1.y - cell2.y) / dist
+                    cell1.x += dx * overlap / 2
+                    cell2.x -= dx * overlap / 2
+                    cell1.y += dy * overlap / 2
+                    cell2.y -= dy * overlap / 2
 
-    screen.fill(BACKGROUND_COLOR)
-    for pet in pets:
-        pygame.draw.rect(screen, pet.color, (pet.x, pet.y, pet.size, pet.size))
-    if food_x is not None and food_y is not None:
-        pygame.draw.rect(screen, FOOD_COLOR, (food_x, food_y, FOOD_SIZE, FOOD_SIZE))
-    pygame.draw.rect(screen, (200, 200, 200), (0, SCREEN_HEIGHT - MENU_HEIGHT, SCREEN_WIDTH, MENU_HEIGHT))
+def main():
+    run = True
+    cells = [Cell(random.randint(0, window_width), random.randint(0, window_height), 10, random_color()) for _ in range(1)]
+    foods = []
 
-    pygame.display.flip()
+    while run:
+        window.fill((255, 255, 255))
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                run = False
 
-    pygame.time.Clock().tick(60)
+        if random.randint(1, 200) > 195:  # Random food spawn
+            foods.append(Food())
 
-pygame.quit()
-sys.exit()
+        check_cell_collision(cells)
+
+        for cell in cells[:]:
+            cell.move_towards_food(foods) if foods else cell.move()
+            action = cell.eat_food(foods)
+            if action == 'spawn_new_cell':
+                # Spawn a new cell at a random position with a random color
+                cells.append(Cell(random.randint(0, window_width), random.randint(0, window_height), 10, random_color()))
+            elif action == 'explode':
+                # Create new food where the cell exploded and remove the cell
+                #for _ in range(10):
+                    #foods.append(Food(cell.x, cell.y))
+                cells.remove(cell)
+            
+            cell.draw(window)
+
+        for food in foods:
+            food.draw(window)
+
+        pygame.display.update()
+        clock.tick(fps)
+
+    pygame.quit()
+
+if __name__ == "__main__":
+    main()
