@@ -6,7 +6,8 @@ import math
 pygame.init()
 
 pygame.font.init()  # Initialize font module
-font = pygame.font.SysFont('Arial', 24)  # Choose the Arial font and set size to 24
+font = pygame.font.SysFont('Arial', 12)  # Choose the Arial font and set size to 24
+
 # Window setup
 window_width, window_height = 800, 600
 window = pygame.display.set_mode((window_width, window_height))
@@ -67,12 +68,13 @@ class Cell:
                 self.food_eaten += 1
                 self.radius += .25  # Cell grows in size
                 self.speed *= .99  # Slightly reduce speed
-                self.color = random_color()
                 
-                if self.food_eaten % 5  == 0:  # Spawn a new cell every 2 pieces of food
+                
+                if self.food_eaten % 10  == 0:  # Spawn a new cell every X pieces of food
+                    self.color = random_color()
                     action_required = 'spawn_new_cell'
                 
-                if self.food_eaten == 100:  # Explode after eating 10 pieces of food
+                if self.food_eaten == 50:  # Explode after eating X pieces of food
                     action_required = 'explode'
                     break
         return action_required
@@ -81,10 +83,10 @@ class Food:
     def __init__(self, x=None, y=None):
         self.x = random.randint(0, window_width) if x is None else x
         self.y = random.randint(0, window_height) if y is None else y
-        self.radius = 2
+        self.radius = 1
 
     def draw(self, window):
-        pygame.draw.circle(window, (0, 0, 0), (self.x, self.y), self.radius)
+        pygame.draw.circle(window, (255, 255, 255), (self.x, self.y), self.radius)
 
 def check_cell_collision(cells):
     for i in range(len(cells)):
@@ -119,7 +121,7 @@ def main():
             if event.type == pygame.QUIT:
                 run = False
 
-        if random.randint(1, 200) > 195:  # Random food spawn
+        if random.randint(1, 100) > 99:  # Random food spawn
             foods.append(Food())
 
         check_cell_collision(cells)
